@@ -73,9 +73,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     apiKeyInput.addEventListener('input', async (event) => {
         const newKey = event.target.value.trim();
-        await sendMessageToBackground('saveSettings', { apiKey: newKey });
-        updateApiStatus(newKey);
-        showStatus('Clé API sauvegardée !', 'success');
+        try {
+            await sendMessageToBackground('saveSettings', { apiKey: newKey });
+            updateApiStatus(newKey);
+            showStatus('Clé API sauvegardée !', 'success');
+        } catch (error) {
+            // showStatus is already called by sendMessageToBackground in case of error
+            // but we might want to update the UI differently or log specifically here if needed.
+            // For now, relying on sendMessageToBackground's error handling is fine.
+            updateApiStatus(newKey); // Update status even if save failed to reflect input
+            console.error("Erreur spécifique lors de la sauvegarde de la clé API depuis l'input:", error);
+        }
     });
 
     // --- Gestion des Personas ---
