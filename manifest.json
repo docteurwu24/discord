@@ -2,32 +2,30 @@
   "manifest_version": 3,
   "name": "Discord AI Assistant",
   "version": "1.0",
-  "description": "Assistant IA discret pour Discord",
+  "description": "Assistant IA pour Discord avec gestion de Personas",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "tabs",
+    "webNavigation"
   ],
   "host_permissions": [
-    "https://discord.com/*"
+    "https://*.discord.com/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
-  "content_scripts": [
-    {
-      "matches": ["https://discord.com/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
-    }
-  ],
+  "content_scripts": [{
+    "matches": ["https://*.discord.com/*"],
+    "js": ["content.js"],
+    "css": ["styles.css"]
+  }],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Discord AI Assistant"
+    "default_popup": "popup.html"
   },
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "web_accessible_resources": [{
+    "resources": ["logs.html"],
+    "matches": ["<all_urls>"]
+  }]
 }

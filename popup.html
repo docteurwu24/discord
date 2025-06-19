@@ -1,357 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <style>
-        body {
-            width: 380px;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #2f3136;
-            color: #dcddde;
-            margin: 0;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .header h1 {
-            color: #5865f2;
-            margin: 0;
-            font-size: 20px;
-        }
-        
-        .header .subtitle {
-            font-size: 12px;
-            color: #72767d;
-            margin-top: 5px;
-        }
-        
-        .section {
-            background: #36393f;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        
-        .section h3 {
-            margin: 0 0 10px 0;
-            color: #5865f2;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .form-group {
-            margin-bottom: 12px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 12px;
-            color: #b9bbbe;
-            font-weight: 500;
-        }
-        
-        input, select, textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #40444b;
-            border-radius: 4px;
-            background: #40444b;
-            color: #dcddde;
-            font-size: 14px;
-            box-sizing: border-box;
-            font-family: inherit;
-        }
-        
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #5865f2;
-            box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
-        }
-        
-        .btn {
-            background: #5865f2;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background 0.2s;
-        }
-        
-        .btn:hover {
-            background: #4752c4;
-        }
-        
-        .btn:disabled {
-            background: #4f545c;
-            cursor: not-allowed;
-        }
-        
-        .btn-full {
-            width: 100%;
-        }
-        
-        .btn-secondary {
-            background: #4f545c;
-        }
-        
-        .btn-secondary:hover {
-            background: #5d6269;
-        }
-        
-        .btn-danger {
-            background: #ed4245;
-        }
-        
-        .btn-danger:hover {
-            background: #c73e3e;
-        }
-        
-        .btn-group {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .btn-group .btn {
-            flex: 1;
-        }
-        
-        .status {
-            text-align: center;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        
-        .status.success {
-            background: #43b581;
-            color: white;
-        }
-        
-        .status.error {
-            background: #ed4245;
-            color: white;
-        }
-        
-        .status.info {
-            background: #5865f2;
-            color: white;
-        }
-        
-        .persona-selector {
-            background: #40444b;
-            border: 2px solid #5865f2;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .persona-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .persona-info .emoji {
-            font-size: 20px;
-        }
-        
-        .persona-info .name {
-            font-weight: 600;
-            color: #5865f2;
-        }
-        
-        .persona-prompt {
-            background: #2f3136;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #b9bbbe;
-            font-style: italic;
-            border-left: 3px solid #5865f2;
-        }
-        
-        .textarea-counter {
-            text-align: right;
-            font-size: 11px;
-            color: #72767d;
-            margin-top: 5px;
-        }
-        
-        .feature-list {
-            font-size: 12px;
-            color: #72767d;
-            margin-top: 10px;
-        }
-        
-        .feature-list li {
-            margin-bottom: 5px;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .stat-box {
-            background: #2f3136;
-            padding: 8px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 18px;
-            font-weight: 600;
-            color: #5865f2;
-        }
-        
-        .stat-label {
-            font-size: 11px;
-            color: #72767d;
-        }
-        
-        .api-warning {
-            background: rgba(237, 66, 69, 0.1);
-            border: 1px solid #ed4245;
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            color: #ed4245;
-        }
-        
-        .success-indicator {
-            background: rgba(67, 181, 129, 0.1);
-            border: 1px solid #43b581;
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            color: #43b581;
-        }
-    </style>
+  <meta charset="utf-8">
+  <title>Discord AI Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      width: 380px;
+      padding: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #2f3136;
+      color: #dcddde;
+    }
+    .section {
+      background: #36393f;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      background: #40444b;
+      border: 1px solid #202225;
+      color: white;
+      border-radius: 4px;
+    }
+    button {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #4752c4;
+    }
+    .status {
+      display: none;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+    .success { background: #3ba55c; }
+    .error { background: #ed4245; }
+    .info { background: #5865f2; }
+    .persona-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🤖 Discord AI Assistant</h1>
-        <div class="subtitle">Système de Personas Avancé</div>
-        <div id="status" class="status" style="display: none;"></div>
+  <div class="section">
+    <h2>Discord AI Assistant</h2>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="section">
+    <h3>Configuration API</h3>
+    <div id="api-warning" style="color: #ed4245; margin-bottom: 10px;">
+      ⚠️ Clé API requise
     </div>
-
-    <!-- Section API -->
-    <div class="section">
-        <h3>🔑 Configuration API</h3>
-        <div id="api-warning" class="api-warning" style="display: none;">
-            <strong>⚠️ Clé API manquante</strong><br>
-            Vous devez configurer votre clé API Google Gemini pour utiliser l'assistant.
-        </div>
-        <div id="api-success" class="success-indicator" style="display: none;">
-            <strong>✅ API configurée</strong><br>
-            Votre clé API est sauvegardée et prête à être utilisée.
-        </div>
-        <div class="form-group">
-            <label>Clé API Google Gemini :</label>
-            <input type="password" id="apiKey" placeholder="AIza..." />
-            <div style="font-size: 11px; color: #72767d; margin-top: 5px;">
-                🔒 Sauvegardée automatiquement et de manière sécurisée
-            </div>
-        </div>
+    <div id="api-success" style="color: #3ba55c; margin-bottom: 10px; display: none;">
+      ✅ API configurée
     </div>
+    <input type="password" id="apiKey" placeholder="Clé API Google Gemini">
+  </div>
 
-    <!-- Section Persona Actuel -->
-    <div class="section">
-        <h3>🎭 Persona Actuel</h3>
-        <div id="current-persona" class="persona-selector">
-            <div class="persona-info">
-                <div class="emoji">🤖</div>
-                <div class="name">Chargement...</div>
-            </div>
-            <div class="persona-prompt">Chargement du persona...</div>
-        </div>
-        <div class="btn-group">
-            <button class="btn" id="quick-switch">🔄 Changer</button>
-            <button class="btn btn-secondary" id="edit-persona">✏️ Modifier</button>
-        </div>
+  <div class="section">
+    <h3>Persona Actuel</h3>
+    <div id="current-persona">
+      <div class="persona-info">
+        <div class="emoji">🤖</div>
+        <div class="name">Aucun persona sélectionné</div>
+      </div>
     </div>
+  </div>
 
-    <!-- Section Gestion des Personas -->
-    <div class="section">
-        <h3>👥 Gestion des Personas</h3>
-        
-        <div class="form-group">
-            <label>Sélectionner un persona :</label>
-            <div style="display: flex; gap: 8px;">
-                <select id="persona-select" style="flex: 1;">
-                    <option value="">-- Nouveau Persona --</option>
-                </select>
-                <button class="btn btn-secondary" id="load-persona">📥 Charger</button>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Nom du persona :</label>
-            <input type="text" id="persona-name" placeholder="Ex: 😎 Ami Décontracté" maxlength="50" />
-        </div>
-        
-        <div class="form-group">
-            <label>Prompt du persona (description de la personnalité) :</label>
-            <textarea id="persona-prompt" rows="4" placeholder="Ex: Tu es Spider-Man et tu réponds de manière décontractée et héroïque. Tu fais des références à tes aventures et tu utilises des expressions comme 'Eh bien!', 'Avec de grands pouvoirs...', etc." maxlength="500"></textarea>
-            <div class="textarea-counter">
-                <span id="prompt-counter">0</span>/500 caractères
-            </div>
-        </div>
-
-        <div class="btn-group">
-            <button class="btn" id="save-persona">💾 Sauvegarder</button>
-            <button class="btn btn-secondary" id="new-persona">✨ Nouveau</button>
-            <button class="btn btn-danger" id="delete-persona">🗑️ Supprimer</button>
-        </div>
+  <div class="section">
+    <h3>Gestion des Personas</h3>
+    <select id="persona-select">
+      <option value="">-- Nouveau Persona --</option>
+    </select>
+    <input type="text" id="persona-name" placeholder="Nom du persona">
+    <textarea id="persona-prompt" rows="4" placeholder="Prompt du persona"></textarea>
+    <div style="display: flex; gap: 8px;">
+      <button id="save-persona">Sauvegarder</button>
+      <button id="load-persona">Charger</button>
+      <button id="delete-persona" style="background: #ed4245;">Supprimer</button>
+      <button id="new-persona" style="background: #40444b;">Nouveau</button>
     </div>
+  </div>
 
+  <div class="section">
+    <button id="open-logs-btn">Ouvrir les Logs</button>
+  </div>
 
-    <!-- Section Statistiques d'Utilisation -->
-    <div class="section">
-        <h3>📊 Statistiques d'Utilisation</h3>
-        <div class="stats-grid">
-            <div class="stat-box">
-                <div id="total-requests" class="stat-value">0</div>
-                <div class="stat-label">Requêtes Totales</div>
-            </div>
-            <div class="stat-box">
-                <div id="tokens-used" class="stat-value">0</div>
-                <div class="stat-label">Tokens Utilisés</div>
-            </div>
-        </div>
-        <button class="btn btn-secondary btn-full" id="reset-stats" style="margin-top: 15px;">
-            🔄 Réinitialiser les Statistiques
-        </button>
-    </div>
-
-    <!-- Section Aide & Support -->
-    <div class="section">
-        <h3>❓ Aide & Support</h3>
-        <div style="font-size: 12px; color: #b9bbbe;">
-            Pour toute question ou problème, veuillez consulter la documentation ou contacter le support.
-        </div>
-        <div class="btn-group" style="margin-top: 15px;">
-            <button class="btn btn-secondary" id="open-docs">📄 Documentation</button>
-            <button class="btn btn-secondary" id="contact-support">📧 Support</button>
-        </div>
-    </div>
+  <script src="popup.js"></script>
 </body>
 </html>
