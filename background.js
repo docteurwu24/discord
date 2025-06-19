@@ -3,12 +3,14 @@
 // Initialisation au premier lancement avec des personas par défaut
 chrome.runtime.onInstalled.addListener(() => {
   console.log('🤖 Discord AI Assistant installé - Version Personas');
-  
+
   // Vérifier si des données existent déjà avant d'initialiser
   chrome.storage.local.get(['personas', 'activePersonaId', 'apiKey', 'extensionSettings'], (result) => {
+    console.log('onInstalled: Initial storage content:', JSON.parse(JSON.stringify(result)));
     const updates = {};
-    
+
     if (!result.personas) {
+      console.log('onInstalled: No existing personas found. Initializing default personas.');
       // Créer des personas par défaut si aucun n'existe
       const defaultPersonas = {
         'casual_friend': {
@@ -40,16 +42,18 @@ chrome.runtime.onInstalled.addListener(() => {
           lastUsed: new Date().toISOString()
         }
       };
-      
+
       updates.personas = defaultPersonas;
       updates.activePersonaId = 'casual_friend';
     }
-    
+
     if (!result.apiKey) {
+      console.log('onInstalled: No existing API key found. Initializing with an empty API key.');
       updates.apiKey = '';
     }
-    
+
     if (!result.extensionSettings) {
+      console.log('onInstalled: No existing extension settings found. Initializing default settings.');
       updates.extensionSettings = {
         autoSave: true,
         maxMessages: 20,
@@ -59,10 +63,10 @@ chrome.runtime.onInstalled.addListener(() => {
         totalGenerations: 0
       };
     }
-    
+
     if (Object.keys(updates).length > 0) {
       chrome.storage.local.set(updates, () => {
-        console.log('✅ Personas et paramètres initialisés:', Object.keys(updates));
+        console.log('✅ onInstalled: Default data initialized for keys:', Object.keys(updates));
       });
     }
   });
@@ -71,7 +75,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // Écoute les messages du content script avec gestion d'erreurs améliorée
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('📨 Message reçu:', request.action);
-  
+
   if (request.action === 'generateResponse') {
     generateAIResponse(request.data)
       .then(response => {
@@ -80,15 +84,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       })
       .catch(error => {
         console.error('❌ Erreur capturée dans le gestionnaire de messages:', error);
-        sendResponse({ 
-          success: false, 
+        sendResponse({
+          success: false,
           error: error.message,
           errorType: error.name || 'GenerationError'
         });
       });
     return true; // Obligatoire pour une réponse asynchrone
   }
-  
+
   // Actions pour la gestion des personas
   if (request.action === 'savePersona') {
     savePersona(request.data)
@@ -96,23 +100,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
-  
+
   if (request.action === 'deletePersona') {
     deletePersona(request.data.personaId)
       .then(result => sendResponse({ success: true, data: result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
-  
+
   if (request.action === 'setActivePersona') {
     setActivePersona(request.data.personaId)
       .then(result => sendResponse({ success: true, data: result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
-  
+
   // Actions génériques pour les paramètres
   if (request.action === 'saveSettings') {
+    if (request.data.hasOwnProperty('apiKey')) {
+        const apiKeyToSave = request.data.apiKey;
+        if (typeof apiKeyToSave !== 'string') {
+            console.error('Error: API Key to save is not a string. Aborting saveSettings for this request. Value:', apiKeyToSave);
+            sendResponse({ success: false, error: 'Invalid API Key format. Must be a string.' });
+            return true; // Stop processing this message
+        }
+        // If it IS a string, even if empty, popup.js logic already handles trimming and the user might intend to clear it.
+        // The original issue is about data *not saving when it should*, so preventing saving of valid empty strings is counterproductive.
+        // The main goal here is to prevent saving *non-string* types for apiKey.
+    }
+
+    // Proceed with the original save logic if all checks pass or if apiKey was not in request.data
     chrome.storage.local.set(request.data, () => {
       if (chrome.runtime.lastError) {
         console.error('❌ Erreur lors de la sauvegarde des paramètres:', chrome.runtime.lastError);
@@ -124,7 +141,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
-  
+
   if (request.action === 'getSettings') {
     chrome.storage.local.get(request.keys || null, (result) => {
       if (chrome.runtime.lastError) {
@@ -142,17 +159,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function generateAIResponse(conversationData) {
   try {
     console.log('🔄 Début de génération de réponse IA...');
-    
+
     // Récupération des données avec validation
     const storage = await chrome.storage.local.get([
-      'apiKey', 
-      'personas', 
-      'activePersonaId', 
+      'apiKey',
+      'personas',
+      'activePersonaId',
       'extensionSettings'
     ]);
-    
+
     const { apiKey, personas, activePersonaId, extensionSettings } = storage;
-    
+
     // Validations avec messages d'erreur plus précis
     if (!apiKey || apiKey.trim() === '') {
       throw new Error("❌ Clé API Google Gemini manquante. Configurez-la dans les options de l'extension (clic sur l'icône 🤖).");
@@ -161,40 +178,40 @@ async function generateAIResponse(conversationData) {
     if (!personas || Object.keys(personas).length === 0) {
       throw new Error("❌ Aucun persona trouvé. Créez un persona dans les options de l'extension.");
     }
-    
+
     if (!activePersonaId || !personas[activePersonaId]) {
       throw new Error("❌ Persona actif introuvable. Sélectionnez un persona dans les options.");
     }
-    
+
     const activePersona = personas[activePersonaId];
     console.log(`🎭 Utilisation du persona : "${activePersona.name}"`);
 
     const { messages } = conversationData;
-    
+
     if (!messages || messages.length === 0) {
       throw new Error("❌ Aucun message à analyser. Participez à la conversation d'abord.");
     }
 
     // Construction du prompt avec le persona
     const improvedPrompt = buildPersonaPrompt(messages, activePersona, extensionSettings);
-    
+
     console.log('📝 Prompt construit avec persona:', improvedPrompt.substring(0, 200) + '...');
 
     // Appel API avec paramètres optimisés
     const response = await callGeminiAPI(apiKey, improvedPrompt);
-    
+
     // Traitement et nettoyage de la réponse
     const cleanedSuggestions = processGeminiResponse(response);
-    
+
     // Mise à jour des statistiques d'utilisation
     await updateUsageStats(activePersonaId);
-    
+
     console.log('✨ Suggestions finales:', cleanedSuggestions);
     return cleanedSuggestions;
 
   } catch (error) {
     console.error('💥 Erreur lors de la génération:', error);
-    
+
     // Enregistrer l'erreur pour débuggage
     chrome.storage.local.get(['errorLog'], (result) => {
       const errorLog = result.errorLog || [];
@@ -204,15 +221,15 @@ async function generateAIResponse(conversationData) {
         stack: error.stack,
         persona: activePersonaId
       });
-      
+
       // Garder seulement les 10 dernières erreurs
       if (errorLog.length > 10) {
         errorLog.splice(0, errorLog.length - 10);
       }
-      
+
       chrome.storage.local.set({ errorLog });
     });
-    
+
     throw error;
   }
 }
@@ -220,7 +237,7 @@ async function generateAIResponse(conversationData) {
 function buildPersonaPrompt(messages, persona, settings) {
   const maxMessages = settings?.maxMessages || 15;
   const responseLength = settings?.responseLength || 'medium';
-  
+
   // Prendre les messages les plus récents
   const recentMessages = messages.slice(-maxMessages);
   const conversationHistory = recentMessages
@@ -262,26 +279,58 @@ Génère maintenant 4 suggestions qui correspondent au persona :`;
 
 async function savePersona(personaData) {
   return new Promise((resolve, reject) => {
+    // Validate incoming personaData fields first
+    const name = (typeof personaData.name === 'string') ? personaData.name.trim() : '';
+    const prompt = (typeof personaData.prompt === 'string') ? personaData.prompt.trim() : '';
+
+    if (!name) {
+      const errorMsg = 'Persona name is required and must be a non-empty string.';
+      console.error('Error saving persona:', errorMsg, 'Received data:', personaData);
+      reject(new Error(errorMsg));
+      return;
+    }
+    if (!prompt) {
+      const errorMsg = 'Persona prompt is required and must be a non-empty string.';
+      console.error('Error saving persona:', errorMsg, 'Received data:', personaData);
+      reject(new Error(errorMsg));
+      return;
+    }
+
     chrome.storage.local.get(['personas'], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error('❌ Erreur lors de la récupération des personas pour sauvegarde:', chrome.runtime.lastError);
+        reject(new Error('Impossible de récupérer les personas: ' + chrome.runtime.lastError.message));
+        return;
+      }
+
       const personas = result.personas || {};
-      
       const personaId = personaData.id || 'persona_' + Date.now();
+
+      let createdAtDate;
+      if (personaData.id && personas[personaId] && personas[personaId].createdAt) {
+        createdAtDate = personas[personaId].createdAt;
+      } else if (personaData.createdAt) {
+        createdAtDate = personaData.createdAt;
+      } else {
+        createdAtDate = new Date().toISOString();
+      }
+
       const persona = {
         id: personaId,
-        name: personaData.name || 'Nouveau Persona',
-        prompt: personaData.prompt || 'Tu es un assistant amical.',
-        createdAt: personaData.createdAt || new Date().toISOString(),
+        name: name, // Use the validated & trimmed name
+        prompt: prompt, // Use the validated & trimmed prompt
+        createdAt: createdAtDate,
         lastUsed: new Date().toISOString()
       };
-      
+
       personas[personaId] = persona;
-      
+
       chrome.storage.local.set({ personas }, () => {
         if (chrome.runtime.lastError) {
           console.error('❌ Erreur lors de la sauvegarde du persona:', chrome.runtime.lastError);
           reject(new Error('Impossible de sauvegarder le persona: ' + chrome.runtime.lastError.message));
         } else {
-          console.log('✅ Persona sauvegardé:', persona.name);
+          console.log('✅ Persona sauvegardé:', persona.name, 'ID:', persona.id);
           resolve(persona);
         }
       });
@@ -294,29 +343,29 @@ async function deletePersona(personaId) {
     chrome.storage.local.get(['personas', 'activePersonaId'], (result) => {
       const personas = result.personas || {};
       const activePersonaId = result.activePersonaId;
-      
+
       if (!personas[personaId]) {
         reject(new Error('Persona introuvable'));
         return;
       }
-      
+
       // Empêcher la suppression du dernier persona
       if (Object.keys(personas).length <= 1) {
         reject(new Error('Impossible de supprimer le dernier persona'));
         return;
       }
-      
+
       const personaName = personas[personaId].name;
       delete personas[personaId];
-      
+
       const updates = { personas };
-      
+
       // Si c'était le persona actif, en sélectionner un autre
       if (activePersonaId === personaId) {
         const remainingIds = Object.keys(personas);
         updates.activePersonaId = remainingIds[0];
       }
-      
+
       chrome.storage.local.set(updates, () => {
         if (chrome.runtime.lastError) {
           console.error('❌ Erreur lors de la suppression du persona:', chrome.runtime.lastError);
@@ -334,16 +383,16 @@ async function setActivePersona(personaId) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(['personas'], (result) => {
       const personas = result.personas || {};
-      
+
       if (!personas[personaId]) {
         reject(new Error('Persona introuvable'));
         return;
       }
-      
+
       // Mettre à jour la date de dernière utilisation
       personas[personaId].lastUsed = new Date().toISOString();
-      
-      chrome.storage.local.set({ 
+
+      chrome.storage.local.set({
         activePersonaId: personaId,
         personas: personas
       }, () => {
@@ -363,8 +412,8 @@ async function callGeminiAPI(apiKey, prompt) {
   const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
   const requestBody = {
-    contents: [{ 
-      parts: [{ text: prompt }] 
+    contents: [{
+      parts: [{ text: prompt }]
     }],
     generationConfig: {
       temperature: 0.8,
@@ -378,17 +427,17 @@ async function callGeminiAPI(apiKey, prompt) {
         threshold: "BLOCK_MEDIUM_AND_ABOVE"
       },
       {
-        category: "HARM_CATEGORY_HATE_SPEECH", 
+        category: "HARM_CATEGORY_HATE_SPEECH",
         threshold: "BLOCK_MEDIUM_AND_ABOVE"
       }
     ]
   };
 
   console.log('🚀 Envoi de la requête à Gemini...');
-  
+
   const response = await fetch(GEMINI_API_URL, {
     method: 'POST',
-    headers: { 
+    headers: {
       'Content-Type': 'application/json',
       'User-Agent': 'Discord-AI-Assistant-Personas/1.0'
     },
@@ -398,7 +447,7 @@ async function callGeminiAPI(apiKey, prompt) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     console.error('🔥 Erreur API Gemini:', errorData);
-    
+
     if (response.status === 400) {
       throw new Error('Clé API invalide ou requête malformée. Vérifiez votre clé API.');
     } else if (response.status === 403) {
@@ -467,7 +516,7 @@ async function callGeminiAPI(apiKey, prompt) {
       })
       .filter(line => {
         // Filtrer les lignes trop courtes ou qui semblent être des instructions
-        return line.length >= 3 && 
+        return line.length >= 3 &&
                !line.toLowerCase().includes('suggestion') &&
                !line.toLowerCase().includes('réponse') &&
                !line.toLowerCase().includes('voici') &&
@@ -501,7 +550,7 @@ function createVariation(original) {
     text => `Exactement ! ${text}`,
     text => text.endsWith('?') ? text.replace('?', ' ?') : `${text} ?`
   ];
-  
+
   const randomVariation = variations[Math.floor(Math.random() * variations.length)];
   return randomVariation(original);
 }
@@ -511,26 +560,26 @@ async function updateUsageStats(personaId) {
     const result = await chrome.storage.local.get(['usageStats', 'extensionSettings']);
     const stats = result.usageStats || {};
     const settings = result.extensionSettings || {};
-    
+
     const today = new Date().toDateString();
     if (!stats[today]) {
       stats[today] = { total: 0, personas: {} };
     }
-    
+
     stats[today].total += 1;
     stats[today].personas[personaId] = (stats[today].personas[personaId] || 0) + 1;
-    
+
     // Mettre à jour les paramètres globaux
     settings.totalGenerations = (settings.totalGenerations || 0) + 1;
     settings.lastUsed = new Date().toISOString();
-    
+
     // Garder seulement les 30 derniers jours
     const dates = Object.keys(stats).sort();
     if (dates.length > 30) {
       dates.slice(0, dates.length - 30).forEach(date => delete stats[date]);
     }
-    
-    await chrome.storage.local.set({ 
+
+    await chrome.storage.local.set({
       usageStats: stats,
       extensionSettings: settings
     });
