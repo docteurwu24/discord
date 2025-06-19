@@ -1,45 +1,68 @@
-// background.js - Service Worker Amélioré
+// background.js - Service Worker Amélioré avec Personas
 
-// Initialisation au premier lancement avec des valeurs par défaut plus robustes
+// Initialisation au premier lancement avec des personas par défaut
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('🤖 Discord AI Assistant installé - Version améliorée');
+  console.log('🤖 Discord AI Assistant installé - Version Personas');
   
   // Vérifier si des données existent déjà avant d'initialiser
-  chrome.storage.local.get(['userProfiles', 'activeProfileId', 'apiKey'], (result) => {
+  chrome.storage.local.get(['personas', 'activePersonaId', 'apiKey', 'extensionSettings'], (result) => {
     const updates = {};
     
-    if (!result.userProfiles) {
-      // Créer un profil par défaut si aucun n'existe
-      const defaultProfileId = 'default_' + Date.now();
-      updates.userProfiles = {
-        [defaultProfileId]: {
-          id: defaultProfileId,
-          name: 'Profil par défaut',
-          tone: 'casual',
-          responseLength: 'medium',
-          expressions: ['ok', 'cool', 'sympa'],
-          expertise: ['général'],
-          createdAt: new Date().toISOString()
+    if (!result.personas) {
+      // Créer des personas par défaut si aucun n'existe
+      const defaultPersonas = {
+        'casual_friend': {
+          id: 'casual_friend',
+          name: '😎 Ami Décontracté',
+          prompt: 'Tu es un ami sympa et décontracté. Tu réponds de manière naturelle, avec un ton amical et détendu. Tu utilises des expressions comme "salut", "cool", "sympa", "tranquille". Tu es toujours positif et encourageant.',
+          createdAt: new Date().toISOString(),
+          lastUsed: new Date().toISOString()
+        },
+        'professional': {
+          id: 'professional',
+          name: '💼 Assistant Professionnel',
+          prompt: 'Tu es un assistant professionnel et courtois. Tu réponds de manière formelle mais chaleureuse. Tu utilises un vocabulaire soutenu et précis. Tu restes toujours respectueux et constructif dans tes réponses.',
+          createdAt: new Date().toISOString(),
+          lastUsed: new Date().toISOString()
+        },
+        'gamer': {
+          id: 'gamer',
+          name: '🎮 Gamer Passionné',
+          prompt: 'Tu es un gamer passionné qui connaît bien l\'univers du gaming. Tu réponds avec enthousiasme et utilises le vocabulaire du gaming. Tu peux faire des références aux jeux populaires et comprends la culture gamer.',
+          createdAt: new Date().toISOString(),
+          lastUsed: new Date().toISOString()
+        },
+        'funny': {
+          id: 'funny',
+          name: '😂 Comique',
+          prompt: 'Tu es quelqu\'un de drôle et spirituel. Tu aimes faire des blagues et des jeux de mots. Tu réponds avec humour tout en restant approprié. Tu utilises des emojis et des expressions amusantes pour rendre la conversation plus légère.',
+          createdAt: new Date().toISOString(),
+          lastUsed: new Date().toISOString()
         }
       };
-      updates.activeProfileId = defaultProfileId;
+      
+      updates.personas = defaultPersonas;
+      updates.activePersonaId = 'casual_friend';
     }
     
     if (!result.apiKey) {
       updates.apiKey = '';
     }
     
-    // Ajouter des paramètres d'extension
-    updates.extensionSettings = {
-      autoSave: true,
-      maxMessages: 20,
-      debugMode: false,
-      lastUsed: new Date().toISOString()
-    };
+    if (!result.extensionSettings) {
+      updates.extensionSettings = {
+        autoSave: true,
+        maxMessages: 20,
+        debugMode: false,
+        responseLength: 'medium',
+        lastUsed: new Date().toISOString(),
+        totalGenerations: 0
+      };
+    }
     
     if (Object.keys(updates).length > 0) {
       chrome.storage.local.set(updates, () => {
-        console.log('✅ Paramètres initialisés:', updates);
+        console.log('✅ Personas et paramètres initialisés:', Object.keys(updates));
       });
     }
   });
@@ -47,7 +70,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Écoute les messages du content script avec gestion d'erreurs améliorée
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('📨 Message reçu:', request);
+  console.log('📨 Message reçu:', request.action);
   
   if (request.action === 'generateResponse') {
     generateAIResponse(request.data)
@@ -66,20 +89,51 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Obligatoire pour une réponse asynchrone
   }
   
-  // Nouvelle action pour sauvegarder les paramètres
+  // Actions pour la gestion des personas
+  if (request.action === 'savePersona') {
+    savePersona(request.data)
+      .then(result => sendResponse({ success: true, data: result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+  
+  if (request.action === 'deletePersona') {
+    deletePersona(request.data.personaId)
+      .then(result => sendResponse({ success: true, data: result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+  
+  if (request.action === 'setActivePersona') {
+    setActivePersona(request.data.personaId)
+      .then(result => sendResponse({ success: true, data: result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+  
+  // Actions génériques pour les paramètres
   if (request.action === 'saveSettings') {
     chrome.storage.local.set(request.data, () => {
-      console.log('⚙️ Paramètres sauvegardés:', request.data);
-      sendResponse({ success: true });
+      if (chrome.runtime.lastError) {
+        console.error('❌ Erreur lors de la sauvegarde des paramètres:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: 'Impossible de sauvegarder les paramètres: ' + chrome.runtime.lastError.message });
+      } else {
+        console.log('⚙️ Paramètres sauvegardés:', Object.keys(request.data));
+        sendResponse({ success: true });
+      }
     });
     return true;
   }
   
-  // Nouvelle action pour récupérer les paramètres
   if (request.action === 'getSettings') {
     chrome.storage.local.get(request.keys || null, (result) => {
-      console.log('📋 Paramètres récupérés:', result);
-      sendResponse({ success: true, data: result });
+      if (chrome.runtime.lastError) {
+        console.error('❌ Erreur lors de la récupération des paramètres:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: 'Impossible de récupérer les paramètres: ' + chrome.runtime.lastError.message });
+      } else {
+        console.log('📋 Paramètres récupérés:', Object.keys(result));
+        sendResponse({ success: true, data: result });
+      }
     });
     return true;
   }
@@ -92,28 +146,28 @@ async function generateAIResponse(conversationData) {
     // Récupération des données avec validation
     const storage = await chrome.storage.local.get([
       'apiKey', 
-      'userProfiles', 
-      'activeProfileId', 
+      'personas', 
+      'activePersonaId', 
       'extensionSettings'
     ]);
     
-    const { apiKey, userProfiles, activeProfileId, extensionSettings } = storage;
+    const { apiKey, personas, activePersonaId, extensionSettings } = storage;
     
     // Validations avec messages d'erreur plus précis
     if (!apiKey || apiKey.trim() === '') {
       throw new Error("❌ Clé API Google Gemini manquante. Configurez-la dans les options de l'extension (clic sur l'icône 🤖).");
     }
 
-    if (!userProfiles || Object.keys(userProfiles).length === 0) {
-      throw new Error("❌ Aucun profil trouvé. Créez un profil dans les options de l'extension.");
+    if (!personas || Object.keys(personas).length === 0) {
+      throw new Error("❌ Aucun persona trouvé. Créez un persona dans les options de l'extension.");
     }
     
-    if (!activeProfileId || !userProfiles[activeProfileId]) {
-      throw new Error("❌ Profil actif introuvable. Sélectionnez un profil dans les options.");
+    if (!activePersonaId || !personas[activePersonaId]) {
+      throw new Error("❌ Persona actif introuvable. Sélectionnez un persona dans les options.");
     }
     
-    const activeProfile = userProfiles[activeProfileId];
-    console.log(`🎭 Utilisation du profil : "${activeProfile.name}"`);
+    const activePersona = personas[activePersonaId];
+    console.log(`🎭 Utilisation du persona : "${activePersona.name}"`);
 
     const { messages } = conversationData;
     
@@ -121,10 +175,10 @@ async function generateAIResponse(conversationData) {
       throw new Error("❌ Aucun message à analyser. Participez à la conversation d'abord.");
     }
 
-    // Construction du prompt amélioré
-    const improvedPrompt = buildImprovedPrompt(messages, activeProfile, extensionSettings);
+    // Construction du prompt avec le persona
+    const improvedPrompt = buildPersonaPrompt(messages, activePersona, extensionSettings);
     
-    console.log('📝 Prompt construit:', improvedPrompt.substring(0, 200) + '...');
+    console.log('📝 Prompt construit avec persona:', improvedPrompt.substring(0, 200) + '...');
 
     // Appel API avec paramètres optimisés
     const response = await callGeminiAPI(apiKey, improvedPrompt);
@@ -133,7 +187,7 @@ async function generateAIResponse(conversationData) {
     const cleanedSuggestions = processGeminiResponse(response);
     
     // Mise à jour des statistiques d'utilisation
-    await updateUsageStats(activeProfileId);
+    await updateUsageStats(activePersonaId);
     
     console.log('✨ Suggestions finales:', cleanedSuggestions);
     return cleanedSuggestions;
@@ -147,7 +201,8 @@ async function generateAIResponse(conversationData) {
       errorLog.push({
         timestamp: new Date().toISOString(),
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
+        persona: activePersonaId
       });
       
       // Garder seulement les 10 dernières erreurs
@@ -162,27 +217,15 @@ async function generateAIResponse(conversationData) {
   }
 }
 
-function buildImprovedPrompt(messages, profile, settings) {
-  const { tone, expressions, responseLength, expertise } = profile;
+function buildPersonaPrompt(messages, persona, settings) {
   const maxMessages = settings?.maxMessages || 15;
+  const responseLength = settings?.responseLength || 'medium';
   
   // Prendre les messages les plus récents
   const recentMessages = messages.slice(-maxMessages);
   const conversationHistory = recentMessages
     .map(msg => `${msg.author}: ${msg.content}`)
     .join('\n');
-
-  // Construction du contexte d'expertise
-  let expertiseContext = '';
-  if (expertise && expertise.length > 0) {
-    expertiseContext = `Tu as des connaissances dans : ${expertise.join(', ')}. Utilise cette expertise quand c'est pertinent pour la conversation.`;
-  }
-
-  // Construction du contexte d'expressions
-  let expressionContext = '';
-  if (expressions && expressions.length > 0) {
-    expressionContext = `Intègre naturellement ces expressions dans tes réponses : ${expressions.join(', ')}. Ne les force pas, utilise-les seulement si elles s'intègrent bien.`;
-  }
 
   // Paramètres de longueur
   const lengthInstructions = {
@@ -191,50 +234,129 @@ function buildImprovedPrompt(messages, profile, settings) {
     'long': 'Réponses détaillées (40-80 mots)'
   };
 
-  // Paramètres de ton
-  const toneInstructions = {
-    'casual': 'Ton décontracté et naturel, comme entre amis',
-    'formal': 'Ton poli et respectueux, langage soutenu',
-    'friendly': 'Ton chaleureux et bienveillant',
-    'professional': 'Ton professionnel et compétent',
-    'sarcastic': 'Ton ironique et piquant (avec subtilité)',
-    'humorous': 'Ton amusant et léger',
-    'serious': 'Ton sérieux et réfléchi'
-  };
+  return `Tu es un assistant IA qui génère des suggestions de réponses pour des conversations Discord.
 
-  return `Tu es un assistant IA spécialisé dans les conversations Discord. Ta mission est de générer exactement 4 suggestions de réponses pertinentes pour continuer une conversation naturellement.
+PERSONA À INCARNER :
+${persona.prompt}
 
 CONTEXTE DE LA CONVERSATION :
 ${conversationHistory}
 
-PERSONNALITÉ À ADOPTER :
-- Ton : ${toneInstructions[tone] || toneInstructions.casual}
-- Longueur : ${lengthInstructions[responseLength] || lengthInstructions.medium}
-- ${expertiseContext}
-- ${expressionContext}
+INSTRUCTIONS :
+- Incarne parfaitement le persona décrit ci-dessus
+- Génère EXACTEMENT 4 suggestions de réponses différentes
+- ${lengthInstructions[responseLength]}
+- Concentre-toi sur les 3 derniers messages pour la pertinence
+- Chaque suggestion doit refléter la personnalité du persona
+- Varie le style et l'approche entre les 4 suggestions
+- Sois naturel et authentique selon le persona
 
-RÈGLES STRICTES :
-1. Génère EXACTEMENT 4 suggestions, ni plus ni moins
-2. Chaque suggestion sur une nouvelle ligne
-3. Pas de numéros, tirets ou puces
-4. Pas d'explications ou commentaires
-5. Concentre-toi sur les 3 derniers messages pour la pertinence
-6. Sois authentique et humain, évite le langage robotique
-7. Varie le style entre les 4 suggestions
-8. Assure-toi que chaque réponse peut logiquement suivre la conversation
+RÈGLES DE FORMAT :
+1. Une suggestion par ligne
+2. Pas de numéros, tirets ou puces
+3. Pas d'explications ou commentaires
+4. EXACTEMENT 4 lignes de réponse
 
-FORMATS INTERDITS :
-❌ 1. Première réponse
-❌ - Première réponse  
-❌ • Première réponse
+Génère maintenant 4 suggestions qui correspondent au persona :`;
+}
 
-FORMAT CORRECT :
-✅ Première réponse
-✅ Deuxième réponse
-✅ Troisième réponse
-✅ Quatrième réponse
+async function savePersona(personaData) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['personas'], (result) => {
+      const personas = result.personas || {};
+      
+      const personaId = personaData.id || 'persona_' + Date.now();
+      const persona = {
+        id: personaId,
+        name: personaData.name || 'Nouveau Persona',
+        prompt: personaData.prompt || 'Tu es un assistant amical.',
+        createdAt: personaData.createdAt || new Date().toISOString(),
+        lastUsed: new Date().toISOString()
+      };
+      
+      personas[personaId] = persona;
+      
+      chrome.storage.local.set({ personas }, () => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Erreur lors de la sauvegarde du persona:', chrome.runtime.lastError);
+          reject(new Error('Impossible de sauvegarder le persona: ' + chrome.runtime.lastError.message));
+        } else {
+          console.log('✅ Persona sauvegardé:', persona.name);
+          resolve(persona);
+        }
+      });
+    });
+  });
+}
 
-Génère maintenant 4 suggestions de réponses :`;
+async function deletePersona(personaId) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['personas', 'activePersonaId'], (result) => {
+      const personas = result.personas || {};
+      const activePersonaId = result.activePersonaId;
+      
+      if (!personas[personaId]) {
+        reject(new Error('Persona introuvable'));
+        return;
+      }
+      
+      // Empêcher la suppression du dernier persona
+      if (Object.keys(personas).length <= 1) {
+        reject(new Error('Impossible de supprimer le dernier persona'));
+        return;
+      }
+      
+      const personaName = personas[personaId].name;
+      delete personas[personaId];
+      
+      const updates = { personas };
+      
+      // Si c'était le persona actif, en sélectionner un autre
+      if (activePersonaId === personaId) {
+        const remainingIds = Object.keys(personas);
+        updates.activePersonaId = remainingIds[0];
+      }
+      
+      chrome.storage.local.set(updates, () => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Erreur lors de la suppression du persona:', chrome.runtime.lastError);
+          reject(new Error('Impossible de supprimer le persona: ' + chrome.runtime.lastError.message));
+        } else {
+          console.log('🗑️ Persona supprimé:', personaName);
+          resolve({ deletedName: personaName, newActive: updates.activePersonaId });
+        }
+      });
+    });
+  });
+}
+
+async function setActivePersona(personaId) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['personas'], (result) => {
+      const personas = result.personas || {};
+      
+      if (!personas[personaId]) {
+        reject(new Error('Persona introuvable'));
+        return;
+      }
+      
+      // Mettre à jour la date de dernière utilisation
+      personas[personaId].lastUsed = new Date().toISOString();
+      
+      chrome.storage.local.set({ 
+        activePersonaId: personaId,
+        personas: personas
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Erreur lors de l\'activation du persona:', chrome.runtime.lastError);
+          reject(new Error('Impossible d\'activer le persona: ' + chrome.runtime.lastError.message));
+        } else {
+          console.log('🎭 Persona actif changé:', personas[personaId].name);
+          resolve(personas[personaId]);
+        }
+      });
+    });
+  });
 }
 
 async function callGeminiAPI(apiKey, prompt) {
@@ -245,9 +367,9 @@ async function callGeminiAPI(apiKey, prompt) {
       parts: [{ text: prompt }] 
     }],
     generationConfig: {
-      temperature: 0.7,
+      temperature: 0.8,
       maxOutputTokens: 300,
-      topP: 0.8,
+      topP: 0.9,
       topK: 40
     },
     safetySettings: [
@@ -268,7 +390,7 @@ async function callGeminiAPI(apiKey, prompt) {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
-      'User-Agent': 'Discord-AI-Assistant/1.0'
+      'User-Agent': 'Discord-AI-Assistant-Personas/1.0'
     },
     body: JSON.stringify(requestBody)
   });
@@ -289,85 +411,118 @@ async function callGeminiAPI(apiKey, prompt) {
   }
 
   const data = await response.json();
-  console.log('📥 Réponse brute Gemini:', JSON.stringify(data, null, 2));
+  console.log('📥 Réponse brute Gemini reçue');
   return data;
 }
 
-function processGeminiResponse(data) {
-  // Validation de la structure de réponse
-  if (!data.candidates || data.candidates.length === 0) {
-    throw new Error('Aucune suggestion générée par l\'IA. Réessayez avec une conversation différente.');
-  }
+  function processGeminiResponse(data) {
+    // Enregistrer la réponse brute pour le débogage
+    console.log('📥 Réponse brute Gemini pour traitement:', JSON.stringify(data, null, 2));
 
-  const candidate = data.candidates[0];
-  if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
-    throw new Error('Réponse IA malformée. Réessayez.');
-  }
-
-  const textResponse = candidate.content.parts[0].text;
-  if (!textResponse || textResponse.trim() === '') {
-    throw new Error('Réponse IA vide. Réessayez.');
-  }
-
-  // Nettoyage et formatage amélioré
-  const suggestions = textResponse
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .map(line => {
-      // Supprimer les préfixes courants
-      return line.replace(/^[-*•]\s*|^\d+[\.)]\s*|^[►▸]\s*/, '');
-    })
-    .filter(line => {
-      // Filtrer les lignes trop courtes ou qui semblent être des instructions
-      return line.length >= 3 && 
-             !line.toLowerCase().includes('suggestion') &&
-             !line.toLowerCase().includes('réponse');
-    })
-    .slice(0, 4); // Garder max 4 suggestions
-
-  if (suggestions.length === 0) {
-    throw new Error('Impossible d\'extraire des suggestions valides. Reformulez votre conversation.');
-  }
-
-  // Si moins de 4 suggestions, on peut essayer de générer des variantes
-  while (suggestions.length < 4 && suggestions.length > 0) {
-    const lastSuggestion = suggestions[suggestions.length - 1];
-    // Ajouter une variante simple si pas assez de suggestions
-    if (suggestions.length < 2) {
-      suggestions.push(addVariation(lastSuggestion));
-    } else {
-      break; // Arrêter si on ne peut pas générer plus naturellement
+    // Vérifier les blocages de sécurité ou les raisons de fin
+    if (data.promptFeedback && data.promptFeedback.blockReason) {
+      const blockReason = data.promptFeedback.blockReason;
+      console.error('🚫 Contenu bloqué par les filtres de sécurité Gemini:', blockReason);
+      throw new Error(`La génération a été bloquée par les filtres de sécurité de l'IA. Raison: ${blockReason}. Veuillez reformuler votre message.`);
     }
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].finishReason) {
+      const finishReason = data.candidates[0].finishReason;
+      if (finishReason === 'SAFETY') {
+        console.error('🚫 Contenu bloqué par les filtres de sécurité Gemini (finishReason):', finishReason);
+        throw new Error(`La réponse a été bloquée par les filtres de sécurité de l'IA. Veuillez reformuler votre message.`);
+      }
+      if (finishReason === 'STOP') {
+        // C'est une fin normale, pas une erreur
+      }
+      if (finishReason === 'MAX_TOKENS') {
+        console.warn('⚠️ Génération arrêtée en raison de la limite de tokens.');
+        // Pas une erreur critique, mais peut être notifié à l'utilisateur si nécessaire
+      }
+      // Autres finishReason peuvent être gérés ici si nécessaire
+    }
+
+    // Validation de la structure de réponse
+    if (!data.candidates || data.candidates.length === 0) {
+      throw new Error('Aucune suggestion générée par l\'IA. Réessayez avec une conversation différente.');
+    }
+
+    const candidate = data.candidates[0];
+    if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+      throw new Error('Réponse IA malformée ou vide. Réessayez.');
+    }
+
+    const textResponse = candidate.content.parts[0].text;
+    if (!textResponse || textResponse.trim() === '') {
+      throw new Error('Réponse IA vide. Réessayez.');
+    }
+
+    // Nettoyage et formatage amélioré
+    const suggestions = textResponse
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => {
+        // Supprimer les préfixes courants
+        return line.replace(/^[-*•]\s*|^\d+[\.)]\s*|^[►▸]\s*/, '');
+      })
+      .filter(line => {
+        // Filtrer les lignes trop courtes ou qui semblent être des instructions
+        return line.length >= 3 && 
+               !line.toLowerCase().includes('suggestion') &&
+               !line.toLowerCase().includes('réponse') &&
+               !line.toLowerCase().includes('voici') &&
+               !line.toLowerCase().includes('voilà');
+      })
+      .slice(0, 4); // Garder max 4 suggestions
+
+    if (suggestions.length === 0) {
+      throw new Error('Impossible d\'extraire des suggestions valides. Reformulez votre conversation.');
+    }
+
+    // Si moins de 4 suggestions, essayer de créer des variantes
+    while (suggestions.length < 4 && suggestions.length > 0) {
+      const baseSuggestion = suggestions[suggestions.length - 1];
+      const variation = createVariation(baseSuggestion);
+      if (variation && !suggestions.includes(variation)) {
+        suggestions.push(variation);
+      } else {
+        break;
+      }
+    }
+
+    return suggestions;
   }
 
-  return suggestions;
-}
-
-function addVariation(original) {
+function createVariation(original) {
   const variations = [
-    text => `Ah ${text.toLowerCase()}`,
     text => `${text} 👍`,
-    text => `Exactement, ${text.toLowerCase()}`,
-    text => `${text} !`
+    text => `Ah, ${text.toLowerCase()}`,
+    text => `${text} !`,
+    text => `Exactement ! ${text}`,
+    text => text.endsWith('?') ? text.replace('?', ' ?') : `${text} ?`
   ];
   
   const randomVariation = variations[Math.floor(Math.random() * variations.length)];
   return randomVariation(original);
 }
 
-async function updateUsageStats(profileId) {
+async function updateUsageStats(personaId) {
   try {
-    const result = await chrome.storage.local.get(['usageStats']);
+    const result = await chrome.storage.local.get(['usageStats', 'extensionSettings']);
     const stats = result.usageStats || {};
+    const settings = result.extensionSettings || {};
     
     const today = new Date().toDateString();
     if (!stats[today]) {
-      stats[today] = { total: 0, profiles: {} };
+      stats[today] = { total: 0, personas: {} };
     }
     
     stats[today].total += 1;
-    stats[today].profiles[profileId] = (stats[today].profiles[profileId] || 0) + 1;
+    stats[today].personas[personaId] = (stats[today].personas[personaId] || 0) + 1;
+    
+    // Mettre à jour les paramètres globaux
+    settings.totalGenerations = (settings.totalGenerations || 0) + 1;
+    settings.lastUsed = new Date().toISOString();
     
     // Garder seulement les 30 derniers jours
     const dates = Object.keys(stats).sort();
@@ -375,7 +530,10 @@ async function updateUsageStats(profileId) {
       dates.slice(0, dates.length - 30).forEach(date => delete stats[date]);
     }
     
-    await chrome.storage.local.set({ usageStats: stats });
+    await chrome.storage.local.set({ 
+      usageStats: stats,
+      extensionSettings: settings
+    });
   } catch (error) {
     console.warn('⚠️ Impossible de mettre à jour les statistiques:', error);
   }

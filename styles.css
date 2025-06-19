@@ -1,1 +1,56 @@
-/* Ce fichier est intentionnellement laissé vide pour le moment. */
+/* Styles pour le bouton AI Assistant */
+.ai-assistant-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #5865f2, #3b82f6);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+  transition: all 0.3s ease;
+  font-size: 18px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-assistant-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(88, 101, 242, 0.4);
+}
+
+.ai-assistant-btn.active {
+  background: linear-gradient(135deg, #00d4aa, #01a3ff);
+}
+
+/* Styles pour les suggestions */
+.suggestion-item {
+    background: #40444b;
+    padding: 10px;
+    margin: 6px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    border-left: 3px solid #5865f2;
+}
+.suggestion-item:hover {
+    background: #4f545c;
+}
+.suggestion-item:active {
+    transform: scale(0.98);
+}
+.suggestion-item.copied {
+    background: #43b581;
+    border-left-color: #fff;
+}
+.error-message {
+    color: #f04747;
+    background: rgba(240, 71, 71, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+}
