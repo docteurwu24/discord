@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 350px;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #2f3136;
+            color: #dcddde;
+            margin: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #5865f2;
+            margin: 0;
+            font-size: 20px;
+        }
+        
+        .section {
+            background: #36393f;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .section h3 {
+            margin: 0 0 10px 0;
+            color: #5865f2;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #b9bbbe;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #40444b;
+            border-radius: 4px;
+            background: #40444b;
+            color: #dcddde;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #5865f2;
+        }
+        
+        .btn {
+            background: #5865f2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #4752c4;
+        }
+        
+        .btn-secondary {
+            background: #4f545c;
+        }
+        
+        .btn-secondary:hover {
+            background: #5d6269;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+        
+        .status.success {
+            background: #43b581;
+            color: white;
+        }
+        
+        .status.error {
+            background: #f04747;
+            color: white;
+        }
+        
+        .api-section {
+            border: 2px dashed #40444b;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+        }
+        
+        .feature-list {
+            font-size: 12px;
+            color: #72767d;
+            margin-top: 10px;
+        }
+        
+        .feature-list li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 Discord AI Assistant</h1>
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <div class="section">
+        <h3>⚙️ Clé API</h3>
+        <div class="form-group">
+            <label>Clé API Google Gemini :</label>
+            <input type="password" id="apiKey" placeholder="AIza..." />
+            <div style="font-size: 11px; color: #f04747; margin-top: 5px;">
+                Requise pour la génération de suggestions.
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>👤 Gestion des Profils de Ton</h3>
+        
+        <div class="form-group">
+            <label>Sélectionner un profil :</label>
+            <select id="profileSelect">
+                <option value="">-- Nouveau Profil --</option>
+            </select>
+            <button class="btn btn-secondary" id="loadProfileBtn" style="width: auto; margin-left: 10px;">Charger</button>
+            <button class="btn btn-secondary" id="deleteProfileBtn" style="width: auto; margin-left: 10px;">Supprimer</button>
+        </div>
+
+        <div class="form-group">
+            <label>Nom du profil :</label>
+            <input type="text" id="profileName" placeholder="Ex: Amical et Pro" />
+        </div>
+        
+        <div class="form-group">
+            <label>Ton de réponse :</label>
+            <select id="tone">
+                <option value="casual">Décontracté</option>
+                <option value="formal">Formel</option>
+                <option value="friendly">Amical</option>
+                <option value="professional">Professionnel</option>
+                <option value="sarcastic">Sarcastique</option>
+                <option value="humorous">Humoristique</option>
+                <option value="serious">Sérieux</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Longueur des réponses :</label>
+            <select id="responseLength">
+                <option value="short">Courtes</option>
+                <option value="medium">Moyennes</option>
+                <option value="long">Longues</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Vos expressions favorites (séparées par des virgules) :</label>
+            <textarea id="expressions" rows="3" placeholder="genre, carrément, du coup, tranquille..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Sujets d'expertise :</label>
+            <input type="text" id="expertise" placeholder="tech, gaming, musique..." />
+        </div>
+
+        <button class="btn" id="saveProfileBtn">💾 Sauvegarder le profil et la clé API</button>
+    </div>
+
+    <div class="section api-section">
+        <h3>🚀 Fonctionnalités actuelles</h3>
+    <ul class="feature-list">
+            <li>✅ Gestion de multiples profils de ton</li>
+            <li>✅ Suggestions de réponses personnalisées par profil</li>
+            <li>✅ Interface discrète et intuitive</li>
+            <li>✅ Copie en un clic</li>
+            <li>✅ Personnalisation des expressions et sujets d'expertise par profil</li>
+        </ul>
+    </div>
+
+    <button class="btn btn-secondary" id="resetSettings" style="margin-top: 10px;">🔄 Réinitialiser tous les paramètres</button>
+    
+    <div style="text-align: center; margin-top: 15px; font-size: 11px; color: #72767d;">
+        Version 1.0 - Activez l'assistant sur Discord avec le bouton 🤖
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
